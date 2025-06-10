@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}{{ unit.name }} - Просмотр{% endblock %}
+
+{% block content %}
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h2 class="mb-0">
+            {{ unit.name }}
+            <small class="text-muted fs-5">Просмотр подразделения</small>
+        </h2>
+        <div class="btn-group">
+            <a href="{{ url_for('units.edit_unit', id=unit.id) }}" class="btn btn-outline-secondary">
+                Редактировать
+            </a>
+            <a href="{{ url_for('units.list_units') }}" class="btn btn-outline-primary">
+                Назад к списку
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <h5>Основная информация</h5>
+                    <hr class="mt-1">
+                    <dl class="row">
+                        <dt class="col-sm-4">Тип:</dt>
+                        <dd class="col-sm-8">{{ unit.type.name if unit.type else '-' }}</dd>
+                        
+                        <dt class="col-sm-4">Страна:</dt>
+                        <dd class="col-sm-8">{{ unit.country.name if unit.country else '-' }}</dd>
+                        
+                        <dt class="col-sm-4">Дата формирования:</dt>
+                        <dd class="col-sm-8">{{ unit.formation_date|default('-', true) }}</dd>
+                        
+                        <dt class="col-sm-4">Дата расформирования:</dt>
+                        <dd class="col-sm-8">{{ unit.dissolution_date|default('-', true) }}</dd>
+                    </dl>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <h5>Командование</h5>
+                    <hr class="mt-1">
+                    <dl class="row">
+                        <dt class="col-sm-4">Командующий:</dt>
+                        <dd class="col-sm-8">
+                            {% if unit.commander %}
+                                <a href="{{ url_for('commanders.view_commander', id=unit.commander.id) }}">
+                                    {{ unit.commander.last_name }} {{ unit.commander.first_name }}
+                                </a>
+                            {% else %}
+                                Не назначен
+                            {% endif %}
+                        </dd>
+                        
+                        <dt class="col-sm-4">Вышестоящее подразделение:</dt>
+                        <dd class="col-sm-8">
+                            {% if unit.parent %}
+                                <a href="{{ url_for('units.view_unit', id=unit.parent.id) }}">
+                                    {{ unit.parent.name }}
+                                </a>
+                            {% else %}
+                                Нет
+                            {% endif %}
+                        </dd>
+                    </dl>
+                </div>
+                
+                <div class="mb-3">
+                    <h5>Состав подразделения</h5>
+                    <hr class="mt-1">
+                    {% if unit.subunits %}
+                        <ul class="list-group">
+                            {% for subunit in unit.subunits %}
+                            <li class="list-group-item">
+                                <a href="{{ url_for('units.view_unit', id=subunit.id) }}">
+                                    {{ subunit.name }}
+                                </a>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted">Нет подчиненных подразделений</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Участие в сражениях</h5>
+    </div>
+    <div class="card-body">
+        {% if unit.battle_participations %}
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Сражение</th>
+                        <th>Дата</th>
+                        <th>Сторона</th>
+                        <th>Результат</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for participation in unit.battle_participations %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('battles.view_battle', id=participation.battle.id) }}">
+                                {{ participation.battle.name }}
+                            </a>
+                        </td>
+                        <td>{{ participation.battle.start_date }}</td>
+                        <td>
+                            <span class="badge bg-{{ 'success' if participation.side == 'allies' else 'danger' }}">
+                                {{ 'Союзники' if participation.side == 'allies' else 'Ось' }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if participation.is_victor %}
+                                <span class="badge bg-success">Победа</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Поражение</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted">Подразделение не участвовало в сражениях</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

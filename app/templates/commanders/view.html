@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}{{ commander.last_name }} {{ commander.first_name }}{% endblock %}
+
+{% block content %}
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h2 class="mb-0">
+            {{ commander.last_name }} {{ commander.first_name }}
+            <small class="text-muted fs-5">Просмотр</small>
+        </h2>
+        <div class="btn-group">
+            <a href="{{ url_for('commanders.edit_commander', id=commander.id) }}" 
+               class="btn btn-outline-secondary">
+                Редактировать
+            </a>
+            <a href="{{ url_for('commanders.list_commanders') }}" class="btn btn-outline-primary">
+                Назад к списку
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <h5>Основная информация</h5>
+                    <hr class="mt-1">
+                    <dl class="row">
+                        <dt class="col-sm-4">Дата рождения:</dt>
+                        <dd class="col-sm-8">{{ commander.birth_date|default('-', true) }}</dd>
+                        
+                        <dt class="col-sm-4">Дата смерти:</dt>
+                        <dd class="col-sm-8">{{ commander.death_date|default('-', true) }}</dd>
+                        
+                        <dt class="col-sm-4">Страна:</dt>
+                        <dd class="col-sm-8">
+                            {{ commander.country.name if commander.country else '-' }}
+                        </dd>
+                        
+                        <dt class="col-sm-4">Звание:</dt>
+                        <dd class="col-sm-8">
+                            {{ commander.rank.name if commander.rank else '-' }}
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <h5>Биография</h5>
+                    <hr class="mt-1">
+                    {% if commander.biography %}
+                        <div class="bg-light p-3 rounded">
+                            {{ commander.biography|nl2br }}
+                        </div>
+                    {% else %}
+                        <p class="text-muted">Нет информации</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

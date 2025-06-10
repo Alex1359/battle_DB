@@ -1,0 +1,347 @@
+{% extends "base.html" %}
+
+{% block title %}Новое сражение (шаг 3){% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+<style>
+    .form-label.required:after { content: " *"; color: #dc3545; }
+    .select2-container--default .select2-selection--single { height: 38px; padding: 5px; }
+    .wizard-progress { height: 5px; }
+    .loss-form, .trophy-form { border: 1px solid #dee2e6; border-radius: 5px; padding: 15px; margin-bottom: 20px; }
+    .participant-header { background-color: #f8f9fa; padding: 10px; border-radius: 5px; margin-bottom: 15px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="mb-0">Добавление сражения</h2>
+        <div class="wizard-progress mt-3">
+            <div class="progress">
+                <div class="progress-bar" role="progressbar" style="width: 100%" 
+                     aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+            <div class="d-flex justify-content-between mt-2">
+                <span>1. Основная информация</span>
+                <span>2. Участники</span>
+                <span class="text-primary fw-bold">3. Потери и трофеи</span>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('battles.new_battle_step3') }}" novalidate>
+            <input type="hidden" name="step" value="3">
+            {% include "partials/_form_errors.html" %}
+            
+            <div class="mb-4">
+                <h4>Потери участников</h4>
+                
+                {% for participant in participants_data %}
+                    <div class="participant-header">
+                        <h5>
+                            {% if participant.unit_id %}
+                                {{ units|selectattr("id", "equalto", participant.unit_id)|map(attribute="name")|first }}
+                            {% else %}
+                                {{ commanders|selectattr("id", "equalto", participant.commander_id)|map(attribute="last_name")|first }}
+                            {% endif %}
+                            <small class="text-muted">
+                                ({{ 'Союзники' if participant.side == 'allies' else 'Ось' }})
+                            </small>
+                        </h5>
+                    </div>
+                    
+                    <div class="losses-container mb-4" data-participant-id="{{ participant.unit_id or participant.commander_id }}">
+                        {% if losses_data %}
+                            {% for loss in losses_data %}
+                                {% if loss.participant_id == (participant.unit_id or participant.commander_id) %}
+                                    <div class="loss-form">
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
+                                                    <label class="form-label required">Тип потерь:</label>
+                                                    <select class="form-select" name="losses-{{ loop.index0 }}-type" required>
+                                                        <option value="killed" {% if loss.type == 'killed' %}selected{% endif %}>Убитые</option>
+                                                        <option value="wounded" {% if loss.type == 'wounded' %}selected{% endif %}>Раненые</option>
+                                                        <option value="captured" {% if loss.type == 'captured' %}selected{% endif %}>Пленные</option>
+                                                    </select>
+                                                    <input type="hidden" name="losses-{{ loop.index0 }}-participant_id" 
+                                                           value="{{ participant.unit_id or participant.commander_id }}">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
+                                                    <label class="form-label required">Количество:</label>
+                                                    <input type="number" class="form-control" name="losses-{{ loop.index0 }}-count" 
+                                                           min="1" required value="{{ loss.count }}">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <button type="button" class="btn btn-danger mt-4 remove-loss">
+                                                    Удалить потери
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                        {% endif %}
+                        
+                        <button type="button" class="btn btn-outline-primary add-loss" 
+                                data-participant-id="{{ participant.unit_id or participant.commander_id }}">
+                            + Добавить потери
+                        </button>
+                    </div>
+                {% endfor %}
+            </div>
+            
+            <div class="mb-4">
+                <h4>Трофеи</h4>
+                
+                <div id="trophies-container">
+                    {% if trophies_data %}
+                        {% for trophy in trophies_data %}
+                            <div class="trophy-form">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <div class="mb-3">
+                                            <label class="form-label required">Тип трофея:</label>
+                                            <input type="text" class="form-control" name="trophies-{{ loop.index0 }}-type" 
+                                                   required value="{{ trophy.type }}">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="mb-3">
+                                            <label class="form-label">Количество:</label>
+                                            <input type="number" class="form-control" name="trophies-{{ loop.index0 }}-quantity" 
+                                                   min="1" value="{{ trophy.quantity or 1 }}">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="mb-3">
+                                            <label class="form-label required">Захвачено:</label>
+                                            <select class="form-select select2" name="trophies-{{ loop.index0 }}-captor_id" required>
+                                                <option value="">-- Выберите подразделение --</option>
+                                                {% for participant in participants_data if participant.side == 'allies' %}
+                                                    {% if participant.unit_id %}
+                                                        <option value="{{ participant.unit_id }}"
+                                                            {% if trophy.captor_id == participant.unit_id %}selected{% endif %}>
+                                                            {{ units|selectattr("id", "equalto", participant.unit_id)|map(attribute="name")|first }}
+                                                        </option>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <button type="button" class="btn btn-danger mt-4 remove-trophy">
+                                            Удалить трофей
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Описание:</label>
+                                    <textarea class="form-control" name="trophies-{{ loop.index0 }}-description" 
+                                              rows="2">{{ trophy.description or '' }}</textarea>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                
+                <button type="button" id="add-trophy" class="btn btn-outline-primary">
+                    + Добавить трофей
+                </button>
+            </div>
+            
+            <div class="d-flex justify-content-between mt-4">
+                <a href="{{ url_for('battles.new_battle_step2') }}" class="btn btn-secondary">
+                    ← Назад
+                </a>
+                <button type="submit" class="btn btn-success">
+                    Сохранить сражение
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Шаблон для новых потерь (скрыт) -->
+<div id="loss-template" class="d-none">
+    <div class="loss-form">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label class="form-label required">Тип потерь:</label>
+                    <select class="form-select" name="losses-{index}-type" required>
+                        <option value="killed">Убитые</option>
+                        <option value="wounded">Раненые</option>
+                        <option value="captured">Пленные</option>
+                    </select>
+                    <input type="hidden" name="losses-{index}-participant_id" value="{participant_id}">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label class="form-label required">Количество:</label>
+                    <input type="number" class="form-control" name="losses-{index}-count" min="1" required value="1">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <button type="button" class="btn btn-danger mt-4 remove-loss">
+                    Удалить потери
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Шаблон для новых трофеев (скрыт) -->
+<div id="trophy-template" class="d-none">
+    <div class="trophy-form">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="mb-3">
+                    <label class="form-label required">Тип трофея:</label>
+                    <input type="text" class="form-control" name="trophies-{index}-type" required>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="mb-3">
+                    <label class="form-label">Количество:</label>
+                    <input type="number" class="form-control" name="trophies-{index}-quantity" min="1" value="1">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="mb-3">
+                    <label class="form-label required">Захвачено:</label>
+                    <select class="form-select select2" name="trophies-{index}-captor_id" required>
+                        <option value="">-- Выберите подразделение --</option>
+                        {% for participant in participants_data if participant.side == 'allies' %}
+                            {% if participant.unit_id %}
+                                <option value="{{ participant.unit_id }}">
+                                    {{ units|selectattr("id", "equalto", participant.unit_id)|map(attribute="name")|first }}
+                                </option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <button type="button" class="btn btn-danger mt-4 remove-trophy">
+                    Удалить трофей
+                </button>
+            </div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Описание:</label>
+            <textarea class="form-control" name="trophies-{index}-description" rows="2"></textarea>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/ru.js"></script>
+<script>
+$(document).ready(function() {
+    // Инициализация Select2
+    $('.select2').select2({
+        language: 'ru',
+        width: '100%'
+    });
+
+    // Добавление потерь для участника
+    $('.add-loss').click(function() {
+        const container = $(this).siblings('.losses-container');
+        const participantId = container.data('participant-id');
+        const template = $('#loss-template').html();
+        const index = $('.loss-form').length;
+        
+        // Заменяем плейсхолдеры в шаблоне
+        const newLoss = template.replace(/{index}/g, index)
+                               .replace(/{participant_id}/g, participantId);
+        
+        // Вставляем перед кнопкой "Добавить потери"
+        $(this).before(newLoss);
+    });
+
+    // Удаление потерь
+    $(document).on('click', '.remove-loss', function() {
+        $(this).closest('.loss-form').remove();
+    });
+
+    // Добавление трофея
+    $('#add-trophy').click(function() {
+        const container = $('#trophies-container');
+        const template = $('#trophy-template').html();
+        const index = $('.trophy-form').length;
+        
+        // Заменяем {index} в шаблоне
+        const newTrophy = template.replace(/{index}/g, index);
+        
+        // Добавляем в контейнер
+        container.append(newTrophy);
+        
+        // Инициализация Select2 для нового поля
+        container.find('.trophy-form:last .select2').select2({
+            language: 'ru',
+            width: '100%'
+        });
+    });
+
+    // Удаление трофея
+    $(document).on('click', '.remove-trophy', function() {
+        $(this).closest('.trophy-form').remove();
+    });
+
+    // Валидация формы
+    $('form').submit(function() {
+        let isValid = true;
+        
+        // Проверяем обязательные поля потерь
+        $('.loss-form').each(function() {
+            const type = $(this).find('[name$="-type"]');
+            const count = $(this).find('[name$="-count"]');
+            
+            if (!type.val()) {
+                isValid = false;
+                type.addClass('is-invalid');
+                type.next('.invalid-feedback').remove();
+                type.after('<div class="invalid-feedback">Выберите тип потерь</div>');
+            }
+            
+            if (!count.val() || parseInt(count.val()) < 1) {
+                isValid = false;
+                count.addClass('is-invalid');
+                count.next('.invalid-feedback').remove();
+                count.after('<div class="invalid-feedback">Введите корректное количество</div>');
+            }
+        });
+        
+        // Проверяем обязательные поля трофеев
+        $('.trophy-form').each(function() {
+            const type = $(this).find('[name$="-type"]');
+            const captor = $(this).find('[name$="-captor_id"]');
+            
+            if (!type.val()) {
+                isValid = false;
+                type.addClass('is-invalid');
+                type.next('.invalid-feedback').remove();
+                type.after('<div class="invalid-feedback">Введите тип трофея</div>');
+            }
+            
+            if (!captor.val()) {
+                isValid = false;
+                captor.addClass('is-invalid');
+                captor.next('.invalid-feedback').remove();
+                captor.after('<div class="invalid-feedback">Выберите захватившее подразделение</div>');
+            }
+        });
+        
+        return isValid;
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,71 @@
+/* Основные стили */
+body {
+    background-color: #f8f9fa;
+}
+
+.card {
+    margin-bottom: 2rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.card-header {
+    background-color: #f1f1f1;
+    padding: 1rem 1.25rem;
+}
+
+/* Формы */
+.form-group {
+    margin-bottom: 1.25rem;
+}
+
+.form-label.required:after {
+    content: " *";
+    color: #dc3545;
+}
+
+/* Таблицы */
+.table th {
+    background-color: #f1f1f1;
+}
+
+/* Кнопки */
+.btn-action {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+/* Ошибки */
+.is-invalid {
+    border-color: #dc3545;
+}
+
+.invalid-feedback {
+    color: #dc3545;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+/* Добавьте в extra_css */
+.timeline-container {
+    background: #fff;
+    border: 1px solid #dee2e6;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+#timeline-slider {
+    width: 90%; /*ширина*/
+    margin: 2.5px auto;
+}
+.noUi-handle {
+    width: 24px !important;
+    height: 24px !important;
+}
+
+.noUi-connect {
+    height: 6px !important;
+}
+
+.noUi-target {
+    border: 1px solid #ced4da;
+    box-shadow: none;
+}

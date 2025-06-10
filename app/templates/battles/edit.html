@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Редактирование {{ battle.name }}{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+<style>
+    .form-label.required:after { content: " *"; color: #dc3545; }
+    .select2-container--default .select2-selection--single { height: 38px; padding: 5px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h2 class="mb-0">
+            Редактирование: {{ battle.name }}
+        </h2>
+        <a href="{{ url_for('battles.view_battle', id=battle.id) }}" class="btn btn-outline-primary">
+            ← Назад к просмотру
+        </a>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('battles.edit_battle', id=battle.id) }}" novalidate>
+            {% include "partials/_form_errors.html" %}
+            
+            <div class="mb-3">
+                <label for="name" class="form-label required">Название сражения:</label>
+                <input type="text" class="form-control" id="name" name="name" required
+                       value="{{ battle.name }}">
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="date_begin" class="form-label required">Дата начала:</label>
+                        <input type="date" class="form-control" id="date_begin" name="date_begin" required
+                               value="{{ battle.date_begin }}">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="date_end" class="form-label">Дата окончания:</label>
+                        <input type="date" class="form-control" id="date_end" name="date_end"
+                               value="{{ battle.date_end if battle.date_end }}">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="place_id" class="form-label">Место сражения:</label>
+                <select class="form-select select2" id="place_id" name="place_id">
+                    <option value="">-- Выберите место --</option>
+                    {% for place in places %}
+                        <option value="{{ place.id }}"
+                            {% if battle.place_id == place.id %}selected{% endif %}>
+                            {{ place.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="mb-3">
+                <label for="victory" class="form-label required">Победитель:</label>
+                <input type="text" class="form-control" id="victory" name="victory" required
+                       value="{{ battle.victory }}">
+            </div>
+
+            <div class="mb-3">
+                <label for="description" class="form-label">Описание:</label>
+                <textarea class="form-control" id="description" name="description" rows="4">{{ battle.description or '' }}</textarea>
+            </div>
+            
+            <div class="d-flex justify-content-between">
+                <a href="{{ url_for('battles.view_battle', id=battle.id) }}" class="btn btn-secondary">
+                    Отмена
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    Сохранить изменения
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/ru.js"></script>
+<script>
+$(document).ready(function() {
+    // Инициализация Select2
+    $('.select2').select2({
+        language: 'ru',
+        width: '100%'
+    });
+
+    // Валидация формы
+    $('form').submit(function() {
+        let isValid = true;
+        $('.required').each(function() {
+            const input = $(this).is('label') ? $('#' + $(this).attr('for')) : $(this);
+            if (!input.val()) {
+                isValid = false;
+                input.addClass('is-invalid');
+                input.next('.invalid-feedback').remove();
+                input.after('<div class="invalid-feedback">Это поле обязательно для заполнения</div>');
+            }
+        });
+        
+        // Дополнительная проверка дат
+        const startDate = $('#date_begin').val();
+        const endDate = $('#date_end').val();
+        
+        if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
+            isValid = false;
+            $('#date_end').addClass('is-invalid');
+            $('#date_end').next('.invalid-feedback').remove();
+            $('#date_end').after(
+                '<div class="invalid-feedback">Дата окончания не может быть раньше даты начала</div>'
+            );
+        }
+        
+        return isValid;
+    });
+});
+</script>
+{% endblock %}

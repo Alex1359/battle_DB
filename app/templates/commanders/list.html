@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Командующие{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h2 class="mb-0">Командующие</h2>
+        <a href="{{ url_for('commanders.new_commander') }}" class="btn btn-primary">
+            Добавить командующего
+        </a>
+    </div>
+    <div class="card-body">
+        {% if commanders.items %}
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Фамилия</th>
+                            <th>Имя</th>
+                            <th>Страна</th>
+                            <th>Звание</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for commander in commanders.items %}
+                        <tr>
+                            <td>{{ commander.last_name }}</td>
+                            <td>{{ commander.first_name }}</td>
+                            <td>{{ commander.country.name if commander.country else '-' }}</td>
+                            <td>{{ commander.rank.name if commander.rank else '-' }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('commanders.view_commander', id=commander.id) }}" 
+                                       class="btn btn-outline-primary" title="Просмотр">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{{ url_for('commanders.edit_commander', id=commander.id) }}" 
+                                       class="btn btn-outline-secondary" title="Редактировать">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <form action="{{ url_for('commanders.delete_commander', id=commander.id) }}" 
+                                          method="POST" class="d-inline">
+                                        <button type="submit" class="btn btn-outline-danger" 
+                                                title="Удалить" onclick="return confirm('Вы уверены?')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            {# Пагинация - исправленный вариант #}
+            {% if commanders.pages > 1 %}
+                {% with pagination=commanders, endpoint='commanders.list_commanders' %}
+                    {% include "partials/_pagination.html" %}
+                {% endwith %}
+            {% endif %}
+            
+            {% else %}
+                <div class="alert alert-info mb-0">Нет командующих для отображения</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Инициализация всплывающих подсказок
+    $('[title]').tooltip();
+});
+</script>
+{% endblock %}

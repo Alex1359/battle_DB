@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}Добавление командующего{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+<style>
+    .form-label.required:after {
+        content: " *";
+        color: #dc3545;
+    }
+    .select2-container--default .select2-selection--single {
+        height: 38px;
+        padding: 5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="mb-0">Добавление командующего</h2>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('commanders.new_commander') }}" novalidate>
+            {% include "partials/_form_controls.html" %}
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="last_name" class="form-label required">Фамилия:</label>
+                        <input type="text" class="form-control" id="last_name" name="last_name" 
+                               value="{{ form_data.last_name if form_data }}" required>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="first_name" class="form-label required">Имя:</label>
+                        <input type="text" class="form-control" id="first_name" name="first_name" 
+                               value="{{ form_data.first_name if form_data }}" required>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="birth_date" class="form-label">Дата рождения:</label>
+                        <input type="date" class="form-control" id="birth_date" name="birth_date" 
+                               value="{{ form_data.birth_date if form_data }}">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="death_date" class="form-label">Дата смерти:</label>
+                        <input type="date" class="form-control" id="death_date" name="death_date" 
+                               value="{{ form_data.death_date if form_data }}">
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="country_id" class="form-label required">Страна:</label>
+                        <select class="form-select select2" id="country_id" name="country_id" required>
+                            <option value="">-- Выберите страну --</option>
+                            {% for country in countries %}
+                                <option value="{{ country.id }}" 
+                                    {% if form_data and form_data.country_id == country.id %}selected{% endif %}>
+                                    {{ country.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="rank_id" class="form-label">Звание:</label>
+                        <select class="form-select select2" id="rank_id" name="rank_id" 
+                                {% if not form_data or not form_data.country_id %}disabled{% endif %}>
+                            <option value="">-- Сначала выберите страну --</option>
+                            {% if form_data and form_data.country_id %}
+                                {% for rank in ranks %}
+                                    <option value="{{ rank.id }}" 
+                                        {% if form_data.rank_id == rank.id %}selected{% endif %}>
+                                        {{ rank.name }}
+                                    </option>
+                                {% endfor %}
+                            {% endif %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="biography" class="form-label">Биография:</label>
+                <textarea class="form-control" id="biography" name="biography" rows="4">{{ form_data.biography if form_data }}</textarea>
+            </div>
+
+            <div class="d-flex justify-content-between">
+                <a href="{{ url_for('commanders.list_commanders') }}" class="btn btn-secondary">
+                    Отмена
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    Сохранить
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/ru.js"></script>
+<script>
+$(document).ready(function() {
+    // Инициализация Select2
+    $('.select2').select2({
+        language: 'ru',
+        width: '100%'
+    });
+
+    // Загрузка званий при изменении страны
+    $('#country_id').change(function() {
+        const countryId = $(this).val();
+        const rankSelect = $('#rank_id');
+        const selectedRank = rankSelect.data('selected-rank');
+        
+        if (countryId) {
+            rankSelect.prop('disabled', false);
+            rankSelect.empty().append('<option value="">-- Загрузка... --</option>');
+            
+            $.get("{{ url_for('commanders.get_ranks_api') }}", { country_id: countryId })
+                .done(function(data) {
+                    rankSelect.empty().append('<option value="">-- Выберите звание --</option>');
+                    $.each(data, function(index, rank) {
+                        rankSelect.append($('<option>', {
+                            value: rank.id,
+                            text: rank.name
+                        }));
+                    });
+                    // Восстанавливаем выбранное значение если есть
+                    if (selectedRank) {
+                        rankSelect.val(selectedRank).trigger('change');
+                    }
+                })
+                .fail(function() {
+                    rankSelect.empty().append('<option value="">-- Ошибка загрузки --</option>');
+                });
+        } else {
+            rankSelect.prop('disabled', true).empty()
+                .append('<option value="">-- Сначала выберите страну --</option>');
+        }
+    });
+
+    // Валидация формы
+    $('form').submit(function() {
+        let isValid = true;
+        $('.required').each(function() {
+            const input = $(this).is('label') ? $('#' + $(this).attr('for')) : $(this);
+            if (!input.val()) {
+                isValid = false;
+                input.addClass('is-invalid');
+                input.next('.invalid-feedback').remove();
+                input.after('<div class="invalid-feedback">Это поле обязательно для заполнения</div>');
+            }
+        });
+        return isValid;
+    });
+});
+</script>
+{% endblock %}

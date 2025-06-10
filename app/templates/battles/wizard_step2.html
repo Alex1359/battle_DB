@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+
+{% block title %}Новое сражение (шаг 2){% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+<style>
+    .form-label.required:after { content: " *"; color: #dc3545; }
+    .select2-container--default .select2-selection--single { height: 38px; padding: 5px; }
+    .wizard-progress { height: 5px; }
+    .participant-form { border: 1px solid #dee2e6; border-radius: 5px; padding: 15px; margin-bottom: 20px; }
+    .side-allies { border-left: 4px solid #007bff; }
+    .side-axis { border-left: 4px solid #dc3545; }
+    .side-other { border-left: 4px solid #6c757d; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="mb-0">Добавление сражения</h2>
+        <div class="wizard-progress mt-3">
+            <div class="progress">
+                <div class="progress-bar" role="progressbar" style="width: 66%" 
+                     aria-valuenow="66" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+            <div class="d-flex justify-content-between mt-2">
+                <span>1. Основная информация</span>
+                <span class="text-primary fw-bold">2. Участники</span>
+                <span>3. Потери и трофеи</span>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('battles.new_battle_step2') }}" novalidate>
+            <input type="hidden" name="step" value="2">
+            {% include "partials/_form_errors.html" %}
+            
+            <div id="participants-container">
+                {% if participants_data %}
+                    {% for participant in participants_data %}
+                        {% set participant_index = loop.index0 %}
+                        <div class="participant-form side-{{ participant.side }}" data-index="{{ participant_index }}">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label class="form-label required">Сторона:</label>
+                                        <select class="form-select participant-side" name="participants-{{ participant_index }}-side" required>
+                                            <option value="allies" {% if participant.side == 'allies' %}selected{% endif %}>Союзники</option>
+                                            <option value="axis" {% if participant.side == 'axis' %}selected{% endif %}>Ось</option>
+                                            <option value="other" {% if participant.side == 'other' %}selected{% endif %}>Другая</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-5">
+                                    <div class="mb-3">
+                                        <label class="form-label required">Подразделение:</label>
+                                        <select class="form-select select2 participant-unit" name="participants-{{ participant_index }}-unit_id" required>
+                                            <option value="">-- Выберите подразделение --</option>
+                                            {% for unit in units %}
+                                                <option value="{{ unit.id }}" 
+                                                    {% if participant.unit_id == unit.id %}selected{% endif %}>
+                                                    {{ unit.name }} ({{ unit.country.name }})
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label class="form-label">Командующий:</label>
+                                        <select class="form-select select2 participant-commander" name="participants-{{ participant_index }}-commander_id">
+                                            <option value="">-- Автоматически --</option>
+                                            {% for commander in commanders %}
+                                                <option value="{{ commander.id }}"
+                                                    {% if participant.commander_id == commander.id %}selected{% endif %}>
+                                                    {{ commander.last_name }} {{ commander.first_name }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-1">
+                                    <div class="form-check form-switch mt-4 pt-2">
+                                        <input class="form-check-input participant-victor" type="checkbox" 
+                                               name="participants-{{ participant_index }}-is_victor"
+                                               {% if participant.is_victor %}checked{% endif %}>
+                                        <label class="form-check-label">Победитель</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-danger remove-participant">
+                                Удалить участника
+                            </button>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="alert alert-info">Добавьте хотя бы одного участника сражения</div>
+                {% endif %}
+            </div>
+            
+            <div class="d-flex justify-content-between mt-4">
+                <a href="{{ url_for('battles.new_battle') }}" class="btn btn-secondary">
+                    ← Назад
+                </a>
+                <div>
+                    <button type="button" id="add-participant" class="btn btn-outline-primary me-2">
+                        + Добавить участника
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        Далее →
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Шаблон для нового участника (скрыт) -->
+<div id="participant-template" class="d-none">
+    <div class="participant-form side-allies" data-index="{index}">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="mb-3">
+                    <label class="form-label required">Сторона:</label>
+                    <select class="form-select participant-side" name="participants-{index}-side" required>
+                        <option value="allies">Союзники</option>
+                        <option value="axis">Ось</option>
+                        <option value="other">Другая</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-5">
+                <div class="mb-3">
+                    <label class="form-label required">Подразделение:</label>
+                    <select class="form-select select2 participant-unit" name="participants-{index}-unit_id" required>
+                        <option value="">-- Выберите подразделение --</option>
+                        {% for unit in units %}
+                            <option value="{{ unit.id }}">
+                                {{ unit.name }} ({{ unit.country.name }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="mb-3">
+                    <label class="form-label">Командующий:</label>
+                    <select class="form-select select2 participant-commander" name="participants-{index}-commander_id">
+                        <option value="">-- Автоматически --</option>
+                        {% for commander in commanders %}
+                            <option value="{{ commander.id }}">
+                                {{ commander.last_name }} {{ commander.first_name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-1">
+                <div class="form-check form-switch mt-4 pt-2">
+                    <input class="form-check-input participant-victor" type="checkbox" 
+                           name="participants-{index}-is_victor">
+                    <label class="form-check-label">Победитель</label>
+                </div>
+            </div>
+        </div>
+        <button type="button" class="btn btn-sm btn-danger remove-participant">
+            Удалить участника
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/ru.js"></script>
+<script>
+$(document).ready(function() {
+    // Инициализация Select2
+    $('.select2').select2({
+        language: 'ru',
+        width: '100%'
+    });
+
+    // Добавление нового участника
+    $('#add-participant').click(function() {
+        const container = $('#participants-container');
+        const template = $('#participant-template').html();
+        const index = $('.participant-form').length;
+        
+        // Заменяем {index} в шаблоне на текущий индекс
+        const newParticipant = template.replace(/{index}/g, index);
+        
+        // Добавляем в контейнер
+        if (container.find('.alert').length) {
+            container.empty();
+        }
+        container.append(newParticipant);
+        
+        // Инициализация Select2 для новых полей
+        container.find('.participant-form:last .select2').select2({
+            language: 'ru',
+            width: '100%'
+        });
+        
+        // Обработчик изменения стороны
+        container.find('.participant-form:last .participant-side').change(function() {
+            updateParticipantStyle($(this).closest('.participant-form'));
+        });
+    });
+
+    // Удаление участника
+    $(document).on('click', '.remove-participant', function() {
+        $(this).closest('.participant-form').remove();
+        if ($('#participants-container .participant-form').length === 0) {
+            $('#participants-container').html('<div class="alert alert-info">Добавьте хотя бы одного участника сражения</div>');
+        }
+    });
+
+    // Изменение стиля при выборе стороны
+    $('.participant-side').change(function() {
+        updateParticipantStyle($(this).closest('.participant-form'));
+    });
+
+    // Функция обновления стиля участника
+    function updateParticipantStyle(form) {
+        const side = form.find('.participant-side').val();
+        form.removeClass('side-allies side-axis side-other')
+            .addClass('side-' + side);
+    }
+
+    // Инициализация стилей для существующих участников
+    $('.participant-form').each(function() {
+        updateParticipantStyle($(this));
+    });
+
+    // Валидация формы
+    $('form').submit(function() {
+        let isValid = true;
+        
+        // Проверяем, что есть хотя бы один участник
+        if ($('#participants-container .participant-form').length === 0) {
+            alert('Добавьте хотя бы одного участника сражения');
+            return false;
+        }
+        
+        // Проверяем обязательные поля у каждого участника
+        $('.participant-form').each(function() {
+            const form = $(this);
+            const side = form.find('.participant-side');
+            const unit = form.find('.participant-unit');
+            
+            if (!side.val()) {
+                isValid = false;
+                side.addClass('is-invalid');
+                side.next('.invalid-feedback').remove();
+                side.after('<div class="invalid-feedback">Выберите сторону</div>');
+            }
+            
+            if (!unit.val()) {
+                isValid = false;
+                unit.addClass('is-invalid');
+                unit.next('.invalid-feedback').remove();
+                unit.after('<div class="invalid-feedback">Выберите подразделение</div>');
+            }
+        });
+        
+        return isValid;
+    });
+});
+</script>
+{% endblock %}
